@@ -78,3 +78,25 @@ export async function syncHabitReminders(habit: Habit) {
     if (__DEV__) console.warn('[notifications]', e);
   }
 }
+
+const ADVENTURE_ID = 'adventure-return';
+
+/** "Pip is back" — the appointment mechanic that brings people back after 8 hours. */
+export async function scheduleAdventureReturn(at: Date, name: string) {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(ADVENTURE_ID).catch(() => {});
+    if (!(await ensureNotificationPermission())) return;
+    await ensureChannel();
+    await Notifications.scheduleNotificationAsync({
+      identifier: ADVENTURE_ID,
+      content: { title: i18n.t('notifications.adventureTitle', { name }), body: i18n.t('notifications.adventureBody') },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: at,
+        channelId: Platform.OS === 'android' ? 'reminders' : undefined,
+      },
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('[notifications]', e);
+  }
+}

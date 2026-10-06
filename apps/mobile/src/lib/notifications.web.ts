@@ -6,3 +6,4 @@ export async function ensureNotificationPermission() {
 }
 export async function cancelHabitReminders(_habitId: string) {}
 export async function syncHabitReminders(_habit: Habit) {}
+export async function scheduleAdventureReturn(_at: Date, _name: string) {}

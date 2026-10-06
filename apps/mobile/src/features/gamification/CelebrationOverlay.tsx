@@ -11,6 +11,7 @@ import { useTheme } from '../../ui/theme';
 import { motion, radius, space } from '../../ui/tokens';
 import { addDays, dayOfWeek, startOfWeek } from '../habits/logic/dates';
 import { useHabitStore } from '../habits/store';
+import { DESTINATIONS } from './adventures';
 import { Companion } from './Companion';
 import { XP_PER_PERFECT_DAY } from './progression';
 import { useProgress } from './useProgress';
@@ -89,6 +90,26 @@ export function CelebrationOverlay() {
               </Text>
             </View>
           ) : null}
+        </View>
+      </>
+    );
+  } else if (celebration.kind === 'adventure') {
+    content = (
+      <>
+        <LinearGradient colors={['#40C8E0', '#7B61FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner}>
+          <Text style={{ fontSize: 56, lineHeight: 64 }}>{DESTINATIONS[celebration.destination]}</Text>
+          <Companion stage={p.stage} happy size={110} />
+          <Text variant="title2" tone="inverse">
+            {t('adventure.celebrateTitle', { name: companionName })}
+          </Text>
+        </LinearGradient>
+        <View style={styles.body}>
+          <Text variant="title3" align="center" tabular>
+            +🪙 {celebration.coins}
+          </Text>
+          <Text variant="subhead" tone="secondary" align="center">
+            {t('adventure.celebrateBody', { place: t(`adventure.place.${celebration.destination}`) })}
+          </Text>
         </View>
       </>
     );

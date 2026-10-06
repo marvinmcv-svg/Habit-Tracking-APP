@@ -16,6 +16,7 @@ export function useProgress() {
   const comebacks = useHabitStore((s) => s.comebacks);
   const habitsCreated = useHabitStore((s) => s.habitsCreated);
   const freezes = useHabitStore((s) => s.freezes);
+  const coinsBonus = useHabitStore((s) => s.coinsBonus);
 
   return useMemo(() => {
     const today = todayDate();
@@ -34,9 +35,9 @@ export function useProgress() {
       xp,
       level,
       stage: stageForLevel(level.level),
-      coins: coinBalance({ habits, logs, coinsSpent }),
+      coins: coinBalance({ habits, logs, coinsSpent, coinsBonus }),
       freezes,
       achievements: achievementProgress({ ...totals, longestStreak: streak.longest, habitsCreated, comebacks }),
     };
-  }, [habits, logs, frozenDates, coinsSpent, comebacks, habitsCreated, freezes]);
+  }, [habits, logs, frozenDates, coinsSpent, coinsBonus, comebacks, habitsCreated, freezes]);
 }

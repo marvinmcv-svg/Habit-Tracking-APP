@@ -2,12 +2,17 @@ import { useId } from 'react';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Stop } from 'react-native-svg';
 
+import { useHabitStore } from '../habits/store';
+import { Accessory, Hat } from './Cosmetics';
 import type { CompanionStage } from './progression';
+import type { Equipped } from './shop';
 
 interface Props {
   stage: CompanionStage;
   happy: boolean;
   size?: number;
+  /** Cosmetics to show; defaults to what the user has equipped. */
+  equipped?: Equipped;
 }
 
 const breathe = {
@@ -21,7 +26,9 @@ const breathe = {
  * smiles once today's first habit is done. A slow 3.2s idle "breath" makes it
  * feel alive; it's dropped entirely under Reduce Motion.
  */
-export function Companion({ stage, happy, size = 120 }: Props) {
+export function Companion({ stage, happy, size = 120, equipped }: Props) {
+  const owned = useHabitStore((s) => s.equipped);
+  const { hat, accessory } = equipped ?? owned;
   const reduced = useReducedMotion();
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const body = stage === 0 ? null : stage >= 4 ? ['#C7B8FF', '#7B61FF'] : ['#D8CCFF', '#9A84FF'];
@@ -64,14 +71,14 @@ export function Companion({ stage, happy, size = 120 }: Props) {
         ) : (
           <G>
             {/* Leaf sprout / flower on top */}
-            {stage >= 2 && (
+            {stage >= 2 && !hat && (
               <G>
                 <Path d="M60 34c0-8 0-12 1-16" stroke="#34C759" strokeWidth="3.5" strokeLinecap="round" />
                 <Path d="M61 22c6-9 16-9 19-6-3 8-12 11-19 6Z" fill="#30D158" />
                 <Path d="M60 24c-6-8-15-8-18-5 3 7 11 10 18 5Z" fill="#34C759" />
               </G>
             )}
-            {stage >= 3 && (
+            {stage >= 3 && !hat && (
               <G>
                 <Circle cx="61" cy="14" r="6" fill="#FF6482" />
                 <Circle cx="68" cy="12" r="5" fill="#FF8FA3" />
@@ -127,6 +134,8 @@ export function Companion({ stage, happy, size = 120 }: Props) {
             )}
           </G>
         )}
+        {accessory ? <Accessory item={accessory} stage={stage} /> : null}
+        {hat ? <Hat item={hat} stage={stage} /> : null}
       </Svg>
     </Animated.View>
   );
