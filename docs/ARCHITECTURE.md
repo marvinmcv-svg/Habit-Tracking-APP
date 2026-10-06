@@ -29,11 +29,31 @@ docs/                        This folder
 3. Screens derive everything else with memoised pure functions (`habitStreak`, `useProgress`).
 4. On launch and every foreground, `runDailyCheck` spends freezes or raises the comeback card (once per day).
 
-## Sync (Phase 1 plan)
+## Sync
 
-Local-first, last-write-wins per row by `updated_at`, deletes as tombstones (`deleted_at`). The Postgres schema
-in `supabase/migrations` already mirrors the client model; the sync engine will push dirty rows and pull rows with
-`updated_at > lastPulledAt`, scoped by RLS.
+`src/features/sync/`:
+- `merge.ts` — pure mapping and merge (`collectPush`, `applyPull`), unit-tested.
+- `engine.ts` — `syncWith(client, userId)`: push habits → tombstones → logs → freezes, then pull each table by
+  `synced_at` cursor (paged), merge into the *latest* local state. Also auth (email code), sign-out, account deletion.
+- `useSync.ts` — runs sync on launch, sign-in, foreground, and 4 s after local edits (ignoring its own writes).
+
+Server: `supabase/migrations` (schema, RLS, LWW trigger), `supabase/functions` (`delete-account`, `revenuecat-webhook`).
+
+### Testing sync locally
+
+```bash
+POSTGREST=/path/to/postgrest supabase/tests/sync-e2e/harness.sh
+```
+
+Starts Postgres 16 + PostgREST with the migrations and a stub `auth` schema, then runs
+`apps/mobile/src/features/sync/__tests__/e2e.test.ts`: two simulated devices converge, newer writes win, deletes
+propagate, stale writes are rejected, and another user sees nothing.
+
+## Monetization & telemetry
+
+- `src/lib/purchases.ts` (RevenueCat; `.web.ts` stub) and `src/features/paywall/entitlement.ts` (`useEntitlement`,
+  `openPaywall`, `openNewHabit`). Paywall route: `src/app/paywall.tsx`.
+- `src/lib/telemetry.ts` starts Sentry and PostHog when their keys exist and routes `track()` to PostHog.
 
 ## Design system
 

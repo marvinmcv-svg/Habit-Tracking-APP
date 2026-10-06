@@ -56,11 +56,53 @@ The reference designs use a floating pill bar. A custom JS tab bar gives the sam
 (blur on iOS, a solid translucent fill on Android where `BlurView` is costly). Revisit `NativeTabs` for
 iOS 26 Liquid Glass once it has stable Android parity.
 
-### 2026-10-06 · Analytics/Sentry/RevenueCat/Supabase SDKs are not installed yet
-They need real keys and native builds to be useful. `src/lib/analytics.ts` is a typed facade with the full
-event list already emitted from the store, so wiring PostHog is a one-line `setAnalyticsSink`.
-Values to supply are listed in `apps/mobile/.env.example`.
+### 2026-10-06 · SDKs are installed but key-gated (superseded the "not installed yet" note)
+Supabase, RevenueCat, PostHog and Sentry are wired in, and each turns on only when its public key is
+present (`apps/mobile/.env.example`). Without keys the app behaves exactly as before: local-only, ungated,
+unobserved. The `@sentry/react-native` config plugin is intentionally **not** in `app.json`: it only uploads
+source maps and fails EAS builds without `SENTRY_AUTH_TOKEN`/org/project. Add it once those exist.
 
 ### 2026-10-06 · Web export is a verification tool, not a product
 `expo export --platform web` lets CI and reviewers render real screens in a browser. Storage and
 notifications have `.web.ts` shims. Web stays a non-goal for v1.
+
+### 2026-10-07 · Sync: last-write-wins on top of the existing store (Drizzle stays deferred)
+- Every log write is stamped (`logStamps["habitId|date"]`), habits carry `updatedAt`, deletes leave
+  `habitTombstones`. Push = everything stamped since the last successful push; pull = rows with
+  `synced_at > cursor`.
+- `updated_at` is the **client** write time and decides who wins. `synced_at` is set by the server with
+  `clock_timestamp()` on every accepted write and is the **pull cursor**, so a device with a wrong clock can
+  never hide rows from others, and rows written in one transaction never share a cursor value.
+- A server trigger (`lww_guard`) drops writes whose `updated_at` is older than the stored row.
+- Verified end-to-end against real Postgres 16 + PostgREST with RLS (`supabase/tests/sync-e2e`), in CI.
+- Drizzle: not needed at this data size; the merge logic is pure and fully tested. Revisit if per-user data
+  outgrows a JSON document (thousands of habits) or we need SQL queries on device.
+*Alternatives:* PowerSync/ElectricSQL — powerful, but another vendor and service to run for a single-user dataset.
+
+### 2026-10-07 · Sign-in by email one-time code
+Codes work identically on iOS, Android and web without deep-link setup, and need no password. Apple/Google
+sign-in can be added to the same Supabase project later; Apple requires it only if other social logins exist.
+Account deletion is in-app (store requirement) via the `delete-account` Edge Function.
+
+### 2026-10-07 · Paywall gates only where purchases are possible
+`useEntitlement().unlocked` is true when the user is Pro **or** this build cannot sell (web, or no RevenueCat
+key). Users are never blocked by a paywall they cannot pay through. Free plan: 5 active habits and 7/30-day
+insights; Pro: unlimited habits and 90-day insights. Features not built yet are listed as "Coming to Pro" —
+never sold as if they existed. Annual is pre-selected; trial length and renewal price sit next to the button.
+The client trusts RevenueCat's `CustomerInfo` for UI gating; server features must check `entitlements_cache`
+(written only by the webhook).
+
+### 2026-10-07 · Adventures and the closet
+Adventures are wall-clock timestamps in the persisted store, so they survive app kills and reboots; a local
+notification fires when Pip returns. Starting one requires today's streak to be secured, so the appointment
+mechanic rewards showing up rather than replacing it. Coins from adventures are stored (`coinsBonus`); coins
+from check-ins stay derived.
+
+### 2026-10-07 · Home-screen widgets deferred
+WidgetKit and Android App Widgets need native targets that can't be built or verified in this environment.
+Planned approach: `expo-widgets`/a config plugin reading a small JSON snapshot (streak, today's progress, Pip's
+stage) that the app writes on every change.
+
+### 2026-10-07 · Web build deployed to Vercel as a preview
+The static web export (`expo export --platform web`) is deployed from `apps/mobile` with an SPA rewrite.
+It is a shareable preview of the product; the shipping targets remain iOS and Android.
