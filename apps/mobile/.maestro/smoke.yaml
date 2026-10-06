@@ -1,0 +1,22 @@
+# E2E smoke: onboarding → first check-in → celebration → habits tab.
+# Run against a development build: maestro test apps/mobile/.maestro
+appId: app.bloomhabits.mobile
+---
+- clearState
+- launchApp
+- tapOn: 'Get started'
+- tapOn: 'Meditate'
+- tapOn:
+    text: 'Continue with.*'
+- tapOn:
+    text: 'Hatch.*'
+- assertVisible: "Today's progress"
+- tapOn: 'Check in Meditate'
+- assertVisible: 'Your streak has begun!'
+- tapOn: 'Continue'
+- tapOn: 'Habits'
+- assertVisible: 'My Habits'
+- tapOn: 'Create new habit'
+- inputText: 'Stretch'
+- tapOn: 'Save'
+- assertVisible: 'Stretch'
