@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Companion } from '../features/gamification/Companion';
 import { useHabitStore } from '../features/habits/store';
 import { TEMPLATES } from '../features/habits/templates';
+import { openPaywall } from '../features/paywall/entitlement';
+import { purchasesAvailable } from '../lib/purchases';
 import { track } from '../lib/analytics';
 import { haptics } from '../lib/haptics';
 import { Button } from '../ui/Button';
@@ -36,6 +38,8 @@ export default function Onboarding() {
     haptics.success();
     const drafts = TEMPLATES.filter((tpl) => picked.includes(tpl.key)).map((tpl) => ({ ...tpl.draft, name: t(`templates.${tpl.key}`) }));
     useHabitStore.getState().completeOnboarding(drafts, name);
+    // Value first, then the offer: the paywall follows onboarding only where it can actually sell.
+    if (purchasesAvailable) setTimeout(() => openPaywall('onboarding'), 600);
   };
 
   const dots = (

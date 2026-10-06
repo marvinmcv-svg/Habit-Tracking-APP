@@ -10,6 +10,7 @@ import { isDone, isScheduled } from '../../features/habits/logic/schedule';
 import { completionRate } from '../../features/habits/logic/stats';
 import { habitStreak } from '../../features/habits/logic/streaks';
 import { useHabitStore } from '../../features/habits/store';
+import { openNewHabit } from '../../features/paywall/entitlement';
 import { Card } from '../../ui/Card';
 import { PressableScale } from '../../ui/PressableScale';
 import { Screen, ScreenHeader, SectionTitle } from '../../ui/Screen';
@@ -43,9 +44,20 @@ export default function HabitsScreen() {
           <Stat value={String(doneToday)} label={tr('habits.completedToday')} color={t.success} />
           <Stat value={`${Math.round(week.rate * 100)}%`} label={tr('habits.thisWeek')} color={t.flame} />
         </View>
+        <PressableScale
+          onPress={() => router.push('/insights')}
+          accessibilityLabel={tr('insights.title')}
+          style={[styles.insights, { backgroundColor: t.fill }]}
+        >
+          <Ionicons name="bar-chart" size={16} color={t.accent} />
+          <Text variant="subhead" weight="600" tone="accent" style={{ flex: 1 }}>
+            {tr('insights.open')}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={t.textTertiary} />
+        </PressableScale>
       </Card>
 
-      <PressableScale onPress={() => router.push('/habit/edit')} accessibilityLabel={tr('habits.create')}>
+      <PressableScale onPress={openNewHabit} accessibilityLabel={tr('habits.create')}>
         <Card style={styles.create} padded={false}>
           <View style={[styles.plus, { backgroundColor: t.accent }]}>
             <Ionicons name="add" size={20} color="#FFF" />
@@ -119,6 +131,7 @@ function Stat({ value, label, color }: { value: string; label: string; color: st
 
 const styles = StyleSheet.create({
   summary: { gap: space.md },
+  insights: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.md, height: 40, borderRadius: radius.md },
   stats: { flexDirection: 'row', gap: space.md },
   create: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
   plus: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },

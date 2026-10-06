@@ -27,7 +27,7 @@ export function ListGroup({ title, footer, children }: { title?: string; footer?
         ))}
       </View>
       {footer ? (
-        <Text variant="footnote" tone="secondary" style={styles.groupTitle}>
+        <Text variant="footnote" tone="secondary" style={styles.groupFooter}>
           {footer}
         </Text>
       ) : null}
@@ -83,6 +83,7 @@ export function ListRow({ icon, iconColor, label, value, onPress, right, destruc
 
 const styles = StyleSheet.create({
   groupTitle: { paddingHorizontal: space.lg, textTransform: 'uppercase', letterSpacing: 0.3 },
+  groupFooter: { paddingHorizontal: space.lg },
   group: { borderRadius: radius.lg, borderCurve: 'continuous', overflow: 'hidden' },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 56 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 52, paddingHorizontal: space.lg, paddingVertical: 10 },

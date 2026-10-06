@@ -28,7 +28,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "output": "single"
+      "output": "single",
+      "name": "Bloom — Habit Tracker",
+      "shortName": "Bloom",
+      "themeColor": "#7B61FF",
+      "backgroundColor": "#F2F2F7",
+      "lang": "en"
     },
     "plugins": [
       "expo-router",
@@ -44,6 +49,7 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "description": "Build life-changing habits in a few minutes a day, with a little friend who grows every time you show up."
   }
 }

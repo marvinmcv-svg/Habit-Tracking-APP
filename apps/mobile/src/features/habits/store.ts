@@ -4,7 +4,17 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { track } from '../../lib/analytics';
 import { uuid } from '../../lib/id';
 import { appStorage } from '../../lib/storage';
-import { FREEZE_EARN_EVERY, FREEZE_PRICE, MAX_FREEZES, coinsEarned } from '../gamification/progression';
+import { ADVENTURE_MS, type Adventure, DESTINATIONS, adventureReward, adventureStatus } from '../gamification/adventures';
+import {
+  FREEZE_EARN_EVERY,
+  FREEZE_PRICE,
+  MAX_FREEZES,
+  coinsEarned,
+  levelFromXp,
+  stageForLevel,
+  totalXp,
+} from '../gamification/progression';
+import { type Equipped, itemByKey } from '../gamification/shop';
 import { type LocalDate, addDays, diffDays, today as todayDate } from './logic/dates';
 import { effectiveTarget, valueOn } from './logic/schedule';
 import { isPerfectDay, lifetimeTotals } from './logic/stats';
@@ -27,7 +37,8 @@ export interface Settings {
 export type Celebration =
   | { kind: 'streak'; streak: number; earnedFreeze: boolean; perfect: boolean }
   | { kind: 'perfect' }
-  | { kind: 'freezeUsed'; days: number; streak: number };
+  | { kind: 'freezeUsed'; days: number; streak: number }
+  | { kind: 'adventure'; coins: number; destination: number };
 
 export interface Comeback {
   /** Last covered day before the break — identifies this particular break. */
@@ -56,6 +67,18 @@ interface PersistedState {
   celebrated: { streak: LocalDate | null; perfect: LocalDate | null };
   comeback: Comeback | null;
   dismissedComeback: LocalDate | null;
+  /** Coins earned outside check-ins (adventures). */
+  coinsBonus: number;
+  inventory: string[];
+  equipped: Equipped;
+  adventure: Adventure | null;
+  adventuresCompleted: number;
+  /** Sync bookkeeping: last local write per log ("habitId|date"), and deleted habits awaiting push. */
+  logStamps: Record<string, string>;
+  habitTombstones: Record<string, string>;
+  /** Server cursor (max synced_at pulled) and local cursor (last successful push). */
+  lastPulledAt: string | null;
+  lastPushedAt: string | null;
 }
 
 interface Actions {
@@ -75,6 +98,11 @@ interface Actions {
   completeOnboarding: (habits: HabitDraft[], companionName: string) => void;
   setSettings: (patch: Partial<Settings>) => void;
   setCompanionName: (name: string) => void;
+  /** Starts an 8-hour adventure. Requires today's streak to be secured. */
+  startAdventure: (now?: number) => Adventure | null;
+  claimAdventure: (now?: number) => boolean;
+  buyItem: (key: string) => boolean;
+  equipItem: (key: string | null, slot: 'hat' | 'accessory') => void;
   resetAll: () => void;
 }
 
@@ -96,7 +124,18 @@ const initial: PersistedState = {
   celebrated: { streak: null, perfect: null },
   comeback: null,
   dismissedComeback: null,
+  coinsBonus: 0,
+  inventory: [],
+  equipped: { hat: null, accessory: null },
+  adventure: null,
+  adventuresCompleted: 0,
+  logStamps: {},
+  habitTombstones: {},
+  lastPulledAt: null,
+  lastPushedAt: null,
 };
+
+export const logKey = (habitId: string, date: LocalDate) => `${habitId}|${date}`;
 
 /** Step size for one tap on count and duration habits. */
 export function tapStep(habit: Habit): number {
@@ -105,8 +144,8 @@ export function tapStep(habit: Habit): number {
   return 1;
 }
 
-export function coinBalance(s: Pick<PersistedState, 'habits' | 'logs' | 'coinsSpent'>): number {
-  return coinsEarned(lifetimeTotals(s.habits, s.logs)) - s.coinsSpent;
+export function coinBalance(s: Pick<PersistedState, 'habits' | 'logs' | 'coinsSpent' | 'coinsBonus'>): number {
+  return coinsEarned(lifetimeTotals(s.habits, s.logs)) + s.coinsBonus - s.coinsSpent;
 }
 
 export const useHabitStore = create<HabitState>()(
@@ -151,7 +190,11 @@ export const useHabitStore = create<HabitState>()(
         set((s) => {
           const logs = { ...s.logs };
           delete logs[id];
-          return { habits: s.habits.filter((h) => h.id !== id), logs };
+          return {
+            habits: s.habits.filter((h) => h.id !== id),
+            logs,
+            habitTombstones: { ...s.habitTombstones, [id]: new Date().toISOString() },
+          };
         });
         track('habit_deleted');
       },
@@ -178,7 +221,7 @@ export const useHabitStore = create<HabitState>()(
         else byDate[date] = value;
         const logs = { ...before.logs, [habitId]: byDate };
 
-        set({ logs });
+        set({ logs, logStamps: { ...before.logStamps, [logKey(habitId, date)]: new Date().toISOString() } });
         track('habit_logged', { type: habit.type, done: value >= effectiveTarget(habit) });
 
         // Celebrations only for today — editing history should stay quiet.
@@ -284,11 +327,60 @@ export const useHabitStore = create<HabitState>()(
 
       setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       setCompanionName: (name) => set({ companionName: name.trim() || initial.companionName }),
+
+      startAdventure: (now = Date.now()) => {
+        const s = get();
+        if (s.adventure) return null;
+        const active = activeDatesFrom(s.habits, s.logs);
+        if (!active.has(todayDate())) return null;
+        const stage = stageForLevel(levelFromXp(totalXp(lifetimeTotals(s.habits, s.logs))).level);
+        const adventure: Adventure = {
+          id: uuid(),
+          startedAt: new Date(now).toISOString(),
+          endsAt: new Date(now + ADVENTURE_MS).toISOString(),
+          reward: adventureReward(stage),
+          destination: Math.floor(Math.random() * DESTINATIONS.length),
+        };
+        set({ adventure });
+        track('adventure_started', { coins: adventure.reward.coins });
+        return adventure;
+      },
+
+      claimAdventure: (now = Date.now()) => {
+        const s = get();
+        if (adventureStatus(s.adventure, now).kind !== 'ready' || !s.adventure) return false;
+        const { coins } = s.adventure.reward;
+        set({
+          adventure: null,
+          coinsBonus: s.coinsBonus + coins,
+          adventuresCompleted: s.adventuresCompleted + 1,
+          celebration: { kind: 'adventure', coins, destination: s.adventure.destination },
+        });
+        track('adventure_claimed', { coins });
+        return true;
+      },
+
+      buyItem: (key) => {
+        const s = get();
+        const item = itemByKey(key);
+        if (!item || s.inventory.includes(key) || coinBalance(s) < item.price) return false;
+        set({ inventory: [...s.inventory, key], coinsSpent: s.coinsSpent + item.price, equipped: { ...s.equipped, [item.slot]: key } });
+        track('shop_item_purchased', { item: key, price: item.price });
+        return true;
+      },
+
+      equipItem: (key, slot) => {
+        const s = get();
+        if (key !== null && !s.inventory.includes(key)) return;
+        set({ equipped: { ...s.equipped, [slot]: key } });
+      },
       resetAll: () => set({ ...initial, celebration: null }),
     }),
     {
       name: 'bloom-store',
-      version: 1,
+      version: 2,
+      // v1 → v2 only added fields; fill them from defaults.
+      migrate: (persisted) => ({ ...initial, ...(persisted as Partial<PersistedState>) }) as PersistedState,
       storage: createJSONStorage(() => appStorage),
       partialize: ({ celebration: _c, ...rest }) => {
         // Strip actions — only data is persisted.

@@ -1,5 +1,5 @@
 import { addDays, today } from '../logic/dates';
-import { useHabitStore } from '../store';
+import { coinBalance, useHabitStore } from '../store';
 
 jest.mock('../../../lib/storage', () => {
   const mem = new Map<string, string>();
@@ -110,5 +110,49 @@ describe('habit store', () => {
   it('only sells freezes with enough coins and room', () => {
     useHabitStore.setState({ freezes: 0 });
     expect(useHabitStore.getState().buyFreeze()).toBe(false);
+  });
+
+  it('runs an 8-hour adventure that survives restarts and pays out once', () => {
+    const h = useHabitStore.getState().addHabit(draft);
+    const t0 = Date.parse('2026-10-06T08:00:00Z');
+    expect(useHabitStore.getState().startAdventure(t0)).toBeNull(); // locked until today is secured
+    useHabitStore.getState().tapCheckIn(h.id);
+    useHabitStore.getState().dismissCelebration();
+    const adv = useHabitStore.getState().startAdventure(t0)!;
+    expect(adv.endsAt).toBe('2026-10-06T16:00:00.000Z');
+    expect(useHabitStore.getState().startAdventure(t0)).toBeNull(); // one at a time
+
+    // Persisted as wall-clock timestamps, so a "restart" (fresh read) sees the same state.
+    expect(useHabitStore.getState().claimAdventure(t0 + 7.9 * 3600e3)).toBe(false);
+    const before = coinBalance(useHabitStore.getState());
+    expect(useHabitStore.getState().claimAdventure(t0 + 8 * 3600e3)).toBe(true);
+    const s = useHabitStore.getState();
+    expect(coinBalance(s)).toBe(before + adv.reward.coins);
+    expect(s.celebration).toMatchObject({ kind: 'adventure', coins: adv.reward.coins });
+    expect(s.adventure).toBeNull();
+    expect(useHabitStore.getState().claimAdventure(t0 + 9 * 3600e3)).toBe(false);
+  });
+
+  it('buys and equips cosmetics only with enough coins', () => {
+    expect(useHabitStore.getState().buyItem('bowtie')).toBe(false);
+    useHabitStore.setState({ coinsBonus: 100 });
+    expect(useHabitStore.getState().buyItem('bowtie')).toBe(true);
+    let s = useHabitStore.getState();
+    expect(s.inventory).toEqual(['bowtie']);
+    expect(s.equipped.accessory).toBe('bowtie');
+    expect(coinBalance(s)).toBe(40);
+    expect(useHabitStore.getState().buyItem('bowtie')).toBe(false); // already owned
+    useHabitStore.getState().equipItem(null, 'accessory');
+    useHabitStore.getState().equipItem('crown', 'hat'); // not owned → ignored
+    s = useHabitStore.getState();
+    expect(s.equipped).toEqual({ hat: null, accessory: null });
+  });
+
+  it('stamps every log write and tombstones deletes for sync', () => {
+    const h = useHabitStore.getState().addHabit(draft);
+    useHabitStore.getState().tapCheckIn(h.id);
+    expect(Object.keys(useHabitStore.getState().logStamps)).toEqual([`${h.id}|${today()}`]);
+    useHabitStore.getState().deleteHabit(h.id);
+    expect(Object.keys(useHabitStore.getState().habitTombstones)).toEqual([h.id]);
   });
 });

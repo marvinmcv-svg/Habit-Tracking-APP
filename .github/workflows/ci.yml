@@ -36,6 +36,24 @@ jobs:
       - name: Bundle size
         run: du -sh /tmp/web/_expo/static/js/web/*.js | tee -a "$GITHUB_STEP_SUMMARY"
 
+  sync-e2e:
+    # Real Postgres 16 + PostgREST with the repo migrations; two simulated devices sync through it.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+        working-directory: apps/mobile
+      - name: Install PostgREST
+        run: |
+          curl -sSL https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz | tar xJ -C /usr/local/bin
+      - name: Run sync e2e
+        run: supabase/tests/sync-e2e/harness.sh
+
   database:
     runs-on: ubuntu-latest
     steps:

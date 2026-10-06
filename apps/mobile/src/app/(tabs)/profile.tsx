@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Share, StyleSheet, Switch, TextInput, View } from 'react-native';
@@ -6,6 +7,8 @@ import { Share, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { Companion } from '../../features/gamification/Companion';
 import { useProgress } from '../../features/gamification/useProgress';
 import { type LanguagePref, type ThemePref, useHabitStore } from '../../features/habits/store';
+import { openPaywall, useEntitlement } from '../../features/paywall/entitlement';
+import { useSyncStatus } from '../../features/sync/engine';
 import { confirm } from '../../lib/confirm';
 import { haptics } from '../../lib/haptics';
 import { Card } from '../../ui/Card';
@@ -24,6 +27,8 @@ export default function ProfileScreen() {
   const setSettings = useHabitStore((s) => s.setSettings);
   const companionName = useHabitStore((s) => s.companionName);
   const [name, setName] = useState(companionName);
+  const sync = useSyncStatus();
+  const { isPro, available } = useEntitlement();
 
   const exportData = async () => {
     const { habits, logs, frozenDates, settings: st } = useHabitStore.getState();
@@ -63,6 +68,25 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </Card>
+
+      <ListGroup title={tr('profile.account')} footer={sync.phase === 'disabled' ? tr('profile.syncDisabledFooter') : undefined}>
+        <ListRow
+          icon={sync.phase === 'signedOut' || sync.phase === 'disabled' ? 'cloud-outline' : 'cloud-done'}
+          iconColor="#007AFF"
+          label={sync.email ?? tr('profile.backup')}
+          value={sync.phase === 'disabled' ? tr('profile.notSetUp') : sync.phase === 'signedOut' ? tr('profile.signIn') : undefined}
+          onPress={() => router.push('/account')}
+        />
+        <ListRow
+          icon="sparkles"
+          iconColor="#AF52DE"
+          label={tr('profile.pro')}
+          value={isPro ? tr('profile.active') : available ? tr('profile.upgrade') : tr('profile.soon')}
+          onPress={() => openPaywall('profile')}
+        />
+        <ListRow icon="shirt" iconColor="#FF9500" label={tr('shop.title')} onPress={() => router.push('/shop')} />
+        <ListRow icon="bar-chart" iconColor="#34C759" label={tr('insights.title')} onPress={() => router.push('/insights')} />
+      </ListGroup>
 
       <ListGroup title={tr('profile.appearance')}>
         <ListRow icon="contrast" iconColor="#5856D6" label={tr('profile.theme')}>
@@ -119,7 +143,6 @@ export default function ProfileScreen() {
       </ListGroup>
 
       <ListGroup title={tr('profile.about')}>
-        <ListRow icon="sparkles" iconColor="#AF52DE" label={tr('profile.pro')} value={tr('profile.soon')} />
         <ListRow
           icon="information-circle"
           iconColor="#8E8E93"

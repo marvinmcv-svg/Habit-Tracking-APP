@@ -13,6 +13,8 @@ import { useHabitStore } from '../../features/habits/store';
 import type { Habit, TimeOfDay } from '../../features/habits/types';
 import { Companion } from '../../features/gamification/Companion';
 import { useProgress } from '../../features/gamification/useProgress';
+import { AdventureCard } from '../../features/gamification/AdventureCard';
+import { openNewHabit } from '../../features/paywall/entitlement';
 import { ComebackCard } from '../../features/today/ComebackCard';
 import { HeroCard } from '../../features/today/HeroCard';
 import { StreakCard } from '../../features/today/StreakCard';
@@ -42,6 +44,7 @@ export default function TodayScreen() {
   const weekStartsOn = useHabitStore((s) => s.settings.weekStartsOn);
   const companionName = useHabitStore((s) => s.companionName);
   const comeback = useHabitStore((s) => s.comeback);
+  const adventure = useHabitStore((s) => s.adventure);
   const progress = useProgress();
   const { today } = progress;
   const [selected, setSelected] = useState<LocalDate>(today);
@@ -97,6 +100,8 @@ export default function TodayScreen() {
         level={progress.level}
         isToday={date === today}
       />
+
+      {adventure ? <AdventureCard stage={progress.stage} todayDone={progress.streak.todayDone} /> : null}
 
       {date !== today ? (
         <PressableScale onPress={() => setSelected(today)} accessibilityLabel={t('today.backToToday')}>
@@ -166,7 +171,7 @@ function EmptyState({ stage, name }: { stage: 0 | 1 | 2 | 3 | 4; name: string })
       <Text variant="subhead" tone="secondary" align="center">
         {t('today.empty.body')}
       </Text>
-      <Button label={t('habits.create')} icon="add" onPress={() => router.push('/habit/edit')} style={{ alignSelf: 'stretch' }} />
+      <Button label={t('habits.create')} icon="add" onPress={openNewHabit} style={{ alignSelf: 'stretch' }} />
     </Card>
   );
 }

@@ -2,6 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { MAX_FREEZES, FREEZE_PRICE, STAGE_LEVELS } from '../../features/gamification/progression';
+import { router } from 'expo-router';
+
+import { AdventureCard } from '../../features/gamification/AdventureCard';
 import { Companion } from '../../features/gamification/Companion';
 import { useProgress } from '../../features/gamification/useProgress';
 import { useHabitStore } from '../../features/habits/store';
@@ -54,6 +57,18 @@ export default function AwardsScreen() {
           </View>
         </View>
       </Card>
+
+      <View style={styles.companionActions}>
+        <Button
+          label={tr('shop.open')}
+          icon="shirt-outline"
+          size="md"
+          variant="secondary"
+          onPress={() => router.push('/shop')}
+          style={{ flex: 1 }}
+        />
+      </View>
+      <AdventureCard stage={p.stage} todayDone={p.streak.todayDone} />
 
       <SectionTitle>{tr('awards.records')}</SectionTitle>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.records} style={styles.recordsScroll}>
@@ -123,6 +138,7 @@ export default function AwardsScreen() {
 const styles = StyleSheet.create({
   upper: { textTransform: 'uppercase', letterSpacing: 0.6 },
   companion: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  companionActions: { flexDirection: 'row', gap: space.sm, marginTop: -space.sm },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: 4 },
   bar: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
   barFill: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 4 },

@@ -17,7 +17,20 @@ export type AnalyticsEvent =
   | 'streak_freeze_purchased'
   | 'streak_repaired'
   | 'comeback_started'
-  | 'notification_opened';
+  | 'notification_opened'
+  | 'adventure_started'
+  | 'adventure_claimed'
+  | 'shop_item_purchased'
+  | 'paywall_viewed'
+  | 'paywall_dismissed'
+  | 'trial_started'
+  | 'purchase_completed'
+  | 'purchase_restored'
+  | 'signed_in'
+  | 'signed_out'
+  | 'account_deleted'
+  | 'sync_completed'
+  | 'sync_failed';
 
 type Props = Record<string, string | number | boolean | null | undefined>;
 

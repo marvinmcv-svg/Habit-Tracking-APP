@@ -6,10 +6,17 @@ import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { CelebrationOverlay } from '../features/gamification/CelebrationOverlay';
+import { useEntitlementStore } from '../features/paywall/entitlement';
+import { useBackgroundSync } from '../features/sync/useSync';
 import { useHabitStore } from '../features/habits/store';
 import { track } from '../lib/analytics';
 import i18n, { deviceLanguage } from '../lib/i18n';
+import { configurePurchases } from '../lib/purchases';
+import { startTelemetry } from '../lib/telemetry';
 import { useTheme } from '../ui/theme';
+
+startTelemetry();
+configurePurchases((isPro) => useEntitlementStore.setState({ isPro }));
 
 export default function RootLayout() {
   const t = useTheme();
@@ -36,6 +43,8 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
+  useBackgroundSync();
+
   const navTheme = t.scheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
@@ -48,6 +57,13 @@ export default function RootLayout() {
           <Stack.Protected guard={onboarded}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="habit/[id]" />
+            <Stack.Screen name="insights" />
+            <Stack.Screen name="shop" />
+            <Stack.Screen name="account" />
+            <Stack.Screen
+              name="paywall"
+              options={{ presentation: 'modal', animation: Platform.OS === 'android' ? 'slide_from_bottom' : 'default' }}
+            />
             <Stack.Screen
               name="habit/edit"
               options={{
