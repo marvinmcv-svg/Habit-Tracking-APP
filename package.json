@@ -1,0 +1,12 @@
+{
+  "name": "bloom",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix apps/mobile start",
+    "android": "npm --prefix apps/mobile run android",
+    "ios": "npm --prefix apps/mobile run ios",
+    "test": "npm --prefix apps/mobile test",
+    "typecheck": "npm --prefix apps/mobile run typecheck",
+    "lint": "npm --prefix apps/mobile run lint"
+  }
+}

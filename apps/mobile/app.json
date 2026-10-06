@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Bloom",
+    "slug": "bloom-habits",
+    "scheme": "bloom",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F2F2F7",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.bloomhabits.mobile",
+      "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true
+      }
+    },
+    "android": {
+      "package": "app.bloomhabits.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#7B61FF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": true,
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "color": "#7B61FF"
+        }
+      ],
+      ["expo-system-ui", {}]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
